@@ -7,7 +7,7 @@ const rnd=(a,b)=>a+(b-a)*rng(),pick=a=>a[Math.floor(rng()*a.length)];
 const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const mobile=innerWidth<720;
 const quality=mobile?.85:1;
-const scene=new THREE.Scene();scene.background=new THREE.Color('#93a79f');scene.fog=new THREE.FogExp2('#809b91',mobile?.016:.010);
+const scene=new THREE.Scene();scene.background=new THREE.Color('#7e9690');scene.fog=new THREE.FogExp2('#83968e',mobile?.020:.013);
 const camera=new THREE.PerspectiveCamera(mobile?68:61,innerWidth/innerHeight,.08,500);
 const renderer=new THREE.WebGLRenderer({antialias:!mobile,alpha:false,powerPreference:'high-performance'});
 renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,mobile?1.15:1.65));
@@ -16,7 +16,7 @@ renderer.shadowMap.enabled=!mobile;renderer.shadowMap.type=THREE.PCFSoftShadowMa
 $('stage').replaceChildren(renderer.domElement);
 const hemi=new THREE.HemisphereLight('#b9dad5','#313e34',1.75);scene.add(hemi);
 const sun=new THREE.DirectionalLight('#ffe9af',3.0);sun.position.set(-43,76,-78);sun.castShadow=!mobile;sun.shadow.mapSize.set(1024,1024);sun.shadow.camera.left=-85;sun.shadow.camera.right=85;sun.shadow.camera.top=85;sun.shadow.camera.bottom=-85;sun.shadow.bias=-.0008;scene.add(sun);
-const glow=new THREE.PointLight('#f6ae70',38,20,2);glow.position.set(10,5,-53);scene.add(glow);
+const glow=new THREE.PointLight('#f6ae70',38,20,2);glow.position.set(10,5,-53);scene.add(glow);const electric=new THREE.PointLight('#5da8ad',22,17,2);electric.position.set(-11,5,-17);scene.add(electric);
 const type=(color,roughness=.85,metalness=0)=>new THREE.MeshStandardMaterial({color,roughness,metalness});
 const steel=type('#363f40',.66,.52),rust=type('#775646',.92,.2),glass=type('#2a4146',.25,.35),concrete=type('#737c75'),dark=type('#1c2b29'),moss=type('#335b3e'),wood=type('#574c3e'),rubber=type('#202626',.96);
 const drawTex=(base,add)=>{
@@ -34,6 +34,27 @@ const roadTex=drawTex('#4e5146',ctx=>{
 roadTex.repeat.set(1,20);
 const roadMat=new THREE.MeshStandardMaterial({map:roadTex,roughness:1,vertexColors:true,side:THREE.DoubleSide});
 const pavement=type('#606860');const soil=type('#4b5042');
+
+// Photographic PBR texture set (Poly Haven CC0). Every load has a procedural fallback.
+// They are actual UV-wrapped 3D materials, not a flat photograph over the scene.
+const texLoader=new THREE.TextureLoader();
+function pbrTexture(slug,kind,onLoad) {
+ const url='https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/'+slug+'/'+slug+'_'+kind+'_1k.jpg';
+ texLoader.load(url,(t)=>{t.wrapS=t.wrapT=THREE.RepeatWrapping;t.anisotropy=4;
+ if(kind==='diff')t.colorSpace=THREE.SRGBColorSpace;
+ t.repeat.set(1,1);onLoad(t);},undefined,()=>{});
+}
+function upgradeSurface(material,slug,tint='#ffffff',normal=.45){
+ pbrTexture(slug,'diff',t=>{material.map=t;material.color.set(tint);material.needsUpdate=true});
+ pbrTexture(slug,'nor_gl',t=>{material.normalMap=t;material.normalScale=new THREE.Vector2(normal,normal);material.needsUpdate=true});
+}
+upgradeSurface(roadMat,'worn_asphalt','#7d8078',.25);
+upgradeSurface(concrete,'dirty_concrete','#d0d6ce',.5);
+upgradeSurface(rust,'rusty_painted_metal','#d5a89c',.4);
+upgradeSurface(pavement,'concrete_floor','#c6d4ca',.45);
+upgradeSurface(soil,'gravel_embedded_concrete','#a6aa9c',.35);
+for(const [i,material] of wallMats.entries())upgradeSurface(material,i%2===0?'plastered_wall_05':'red_bricks_04',i%2===0?'#c9d2cc':'#c0b8ad',.43);
+
 function box(w,h,d,m,x,y,z,parent=scene){const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.set(x,y,z);o.castShadow=!mobile;o.receiveShadow=true;parent.add(o);return o}
 function cyl(rt,rb,h,m,x,y,z,parent=scene){const o=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,8),m);o.position.set(x,y,z);o.castShadow=!mobile;parent.add(o);return o}
 function sphere(r,m,x,y,z,parent=scene,detail=1){const o=new THREE.Mesh(new THREE.IcosahedronGeometry(r,detail),m);o.position.set(x,y,z);parent.add(o);return o}
@@ -105,7 +126,7 @@ const grassGeo=new THREE.ConeGeometry(.13,.8,4),grassMat=type('#48704a',1),grass
 for(let i=0;i<grassCount;i++){const z=rnd(-323,22),x=mainX(z)+pick([-1,1])*rnd(3.2,45);dummy.position.set(x,rnd(.14,.38),z);dummy.scale.set(rnd(.3,1.2),rnd(.45,1.8),rnd(.3,1.2));dummy.rotation.set(0,rnd(0,6.3),rnd(-.3,.3));dummy.updateMatrix();grassInstances.setMatrixAt(i,dummy.matrix)}grassInstances.instanceMatrix.needsUpdate=true;scene.add(grassInstances);
 // Wet puddles sit above mud, including irregular reflective patches.
 const puddleMat=new THREE.MeshPhysicalMaterial({color:'#526969',roughness:.16,metalness:.25,clearcoat:1,clearcoatRoughness:.10,transparent:true,opacity:.82,depthWrite:false,side:THREE.DoubleSide});
-for(let i=0;i<65;i++){const z=rnd(-314,12),x=mainX(z)+rnd(-2.2,2.2),p=new THREE.Mesh(new THREE.CircleGeometry(rnd(.25,1.1),16),puddleMat);p.rotation.x=-Math.PI/2;p.scale.y=rnd(.28,.55);p.position.set(x,.115,z);scene.add(p)}
+for(let i=0;i<125;i++){const z=rnd(-314,12),x=mainX(z)+rnd(-2.2,2.2),p=new THREE.Mesh(new THREE.CircleGeometry(rnd(.25,1.1),16),puddleMat);p.rotation.x=-Math.PI/2;p.scale.y=rnd(.28,.55);p.position.set(x,.115,z);scene.add(p)}
 function car(x,z,angle=0){const g=new THREE.Group();g.position.set(x,.15,z);g.rotation.y=angle;scene.add(g);const paint=pick([type('#596965'),type('#6f6055'),type('#657982'),type('#77795f')]);
 box(2.5,.66,5.2,paint,0,.83,0,g);box(2.13,.98,2.6,paint,0,1.53,-.35,g);box(2.08,.65,1.45,glass,0,1.65,.82,g);box(2.08,.65,.12,glass,0,1.65,-1.48,g);
 for(const x1 of [-1.2,1.2])for(const z1 of [-1.67,1.67]){const wheel=cyl(.5,.5,.24,rubber,x1,.47,z1,g);wheel.rotation.z=Math.PI/2;const hub=cyl(.21,.21,.26,steel,x1+(x1<0?-.1:.1),.47,z1,g);hub.rotation.z=Math.PI/2}
@@ -121,6 +142,47 @@ for(let i=0;i<20;i++)rod([x+rnd(-9,9),8,z+rnd(-5,5)],[x+rnd(-9,9),8-rnd(.7,3.5),
 // Light cones, fog boards, power lines and street clutter
 const pale=type('#73807c');for(let i=0;i<18;i++){const z=6-i*18,side=i%2?-1:1;rod([side*8,0,z],[side*8,9.4,z],.07,steel);rod([side*8,9.25,z],[side*4.1,9.25,z],.06,steel);
 const bulb=new THREE.Mesh(new THREE.SphereGeometry(.16,8,6),new THREE.MeshBasicMaterial({color:'#ead8a6'}));bulb.position.set(side*4.1,8.95,z);scene.add(bulb)}
+
+// Architecture and street-detail pass inspired by abandoned-city environment references.
+function addRustedContainer(x,z,a=0){const g=new THREE.Group();g.position.set(x,0,z);g.rotation.y=a;scene.add(g);
+box(3.4,1.95,2.7,steel,0,1.1,0,g);box(3.55,.22,2.85,rust,0,2.15,0,g);
+for(let k=-1.35;k<=1.4;k+=.42){box(.075,1.58,.05,rust,k,1.2,1.38,g);box(.075,1.58,.05,rust,k,1.2,-1.38,g)}
+box(3.6,.12,.10,rust,0,.23,1.41,g);for(let j=0;j<5;j++){const w=sphere(rnd(.15,.33),pick(leafMats),rnd(-1.6,1.6),2.24,rnd(-1.2,1.2),g);w.scale.y=.65}
+return g}
+function powerPole(x,z){rod([x,0,z],[x,11,z],.13,treeStem);
+rod([x-1.1,9.2,z],[x+1.1,9.2,z],.065,wood);
+for(let i=-1;i<=1;i++)cyl(.16,.16,.25,glass,x+i*.9,9.35,z)}
+for(let z=-12;z>-313;z-=31.5){const x1=-10.7+rnd(-1,1),x2=10.8+rnd(-1,1);powerPole(x1,z);powerPole(x2,z+3);
+for(const line of [0,1,2]){const y=9.2+line*.22;
+const curve=new THREE.CatmullRomCurve3([new THREE.Vector3(x1,y,z),new THREE.Vector3(0,y-rnd(.65,2.4),z+1.5),new THREE.Vector3(x2,y,z+3)]);
+const cable=new THREE.Mesh(new THREE.TubeGeometry(curve,11,.016,3,false),rubber);scene.add(cable)}}
+function fence(x,z,length,side){const g=new THREE.Group();g.position.set(x,0,z);g.rotation.y=side>0?Math.PI/2:-Math.PI/2;scene.add(g);
+const fenceWire=type('#43534c',.87,.45);
+for(let i=-length/2;i<=length/2;i+=2.4){box(.08,1.7,.09,steel,i,.95,0,g)}
+rod([-length/2,1.82,0],[length/2,1.82,0],.045,fenceWire,g);
+rod([-length/2,.24,0],[length/2,.24,0],.04,fenceWire,g);
+const c=document.createElement('canvas');c.width=128;c.height=128;const ctx=c.getContext('2d');ctx.clearRect(0,0,128,128);ctx.strokeStyle='#8a968b';ctx.lineWidth=4;
+for(let t=-160;t<200;t+=14){ctx.beginPath();ctx.moveTo(t,0);ctx.lineTo(t+125,128);ctx.moveTo(t,128);ctx.lineTo(t+125,0);ctx.stroke()}
+const texture=new THREE.CanvasTexture(c);texture.wrapS=texture.wrapT=THREE.RepeatWrapping;texture.repeat.set(length/4,1);
+const panel=new THREE.Mesh(new THREE.PlaneGeometry(length,1.55),new THREE.MeshStandardMaterial({map:texture,transparent:true,side:THREE.DoubleSide,metalness:.45,roughness:.77}));panel.position.y=1.02;g.add(panel);
+}
+for(const z of [-29,-77,-113,-181,-265]){fence(-10.2,z,8,-1);fence(10.6,z-12,7,1)}
+for(const item of [[-10,-17,.7],[11,-65,.3],[-11,-129,-.1],[10,-211,.2],[9,-282,-.2]])addRustedContainer(item[0],item[1],item[2]);
+const debrisMat=[concrete,rust,pavement,wood,soil];
+for(let i=0;i<(mobile?160:360);i++){const z=rnd(-312,9),side=pick([-1,1]),x=mainX(z)+side*rnd(3.6,13.8);
+const debris=box(rnd(.10,.78),rnd(.014,.24),rnd(.19,1.6),pick(debrisMat),x,.1,z);
+debris.rotation.y=rnd(0,6.28);debris.rotation.x=rnd(-.2,.2)}
+// Industrial rooftop water tanks and distant broken billboard structures.
+for(const z of [-75,-160,-255]){const x=pick([-1,1])*rnd(18,25),h=rnd(18,27);
+for(const xx of [-1.9,1.9])for(const zz of [-1.5,1.5])rod([x+xx,h-4,z+zz],[x+xx,h+2,z+zz],.1,steel);
+cyl(2.4,2.4,4.8,rust,x,h+.6,z);
+const roof=new THREE.Mesh(new THREE.ConeGeometry(2.5,.8,10),rust);roof.position.set(x,h+3.4,z);scene.add(roof)}
+function concreteArch(z){for(const x of [-11,11])box(2.2,11,3.4,concrete,x,5.3,z);
+box(26,2.8,7.2,concrete,0,11.4,z);
+for(let i=0;i<30;i++){const x=rnd(-12,12),zz=z+rnd(-3,3);if(rng()<.7)rod([x,10.8,zz],[x+rnd(-.5,.5),10.8-rnd(.8,4.2),zz],.035,pick(leafMats))}}
+concreteArch(-33);
+const rainMist=new THREE.Mesh(new THREE.PlaneGeometry(130,20),new THREE.MeshBasicMaterial({color:'#8aa79a',transparent:true,opacity:.045,depthWrite:false,side:THREE.DoubleSide}));rainMist.position.set(0,9,-198);scene.add(rainMist);
+
 // Three custom concept artworks for sample projects. These are canvas textures on REAL 3D surfaces.
 const projects=[
 {id:0,title:'UP T20 — MATCHDAY',category:'01 / SPORTS CAMPAIGN',kind:'poster',subtitle:'Visual storytelling & art direction',desc:'Sample creative: a bold matchday poster exploring sport, typography, momentum and visual storytelling.',tone:'#f27e34'},
