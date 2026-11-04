@@ -61,25 +61,35 @@ function tree(x,z,s=1){const g=new THREE.Group();g.position.set(x,0,z);scene.add
  for(let j=0;j<4;j++){const ang=j*Math.PI*.6+rnd(-.3,.3),r=rnd(1.4,2.6)*s;rod([0,3.3*s,0],[Math.sin(ang)*r,4.1*s+rnd(0,1.1)*s,Math.cos(ang)*r],.085*s,branchMat,g)}
  for(let j=0;j<7;j++){const a=rnd(0,6.28),r=rnd(.4,2.7)*s;const foliage=sphere(rnd(1.2,2.0)*s,pick(leafMats),Math.cos(a)*r,rnd(4.2,5.8)*s,Math.sin(a)*r,g,1);foliage.scale.set(rnd(.7,1.3),rnd(.7,1.4),rnd(.7,1.3))}
  for(let i=0;i<10;i++){const a=rnd(0,6.28);const vine=rod([rnd(-1,1)*s,3.7*s,rnd(-1,1)*s],[Math.cos(a)*2*s,rnd(2,4)*s,Math.sin(a)*1.6*s],.022*s,pick(leafMats),g)}}
+// Weathered façade textures combine grime, windows, cracked paint, moss and broken panes.
+const facadeTextures=['#6b7772','#6f7d76','#89887c','#667a78','#999687','#747f77'].map(base=>{
+const cv=document.createElement('canvas');cv.width=512;cv.height=768;const q=cv.getContext('2d');
+q.fillStyle=base;q.fillRect(0,0,512,768);
+for(let i=0;i<4500;i++){q.fillStyle=i%3?'#16271b16':'#d8cfad14';q.fillRect(rnd(0,512),rnd(0,768),rnd(1,18),rnd(1,30))}
+for(let row=0;row<7;row++)for(let col=0;col<3;col++){const x=38+col*153+rnd(-5,5),y=55+row*97+rnd(-7,7);q.fillStyle='#302e2e88';q.fillRect(x-8,y-8,101,76);
+q.fillStyle=rng()<.08?'#c4bb94':'#1a2b2d';q.fillRect(x,y,84,60);q.strokeStyle='#49514b';q.lineWidth=7;q.strokeRect(x,y,84,60);
+q.strokeStyle='#67716e';q.lineWidth=3;q.beginPath();q.moveTo(x+41,y);q.lineTo(x+41,y+60);q.stroke();
+if(rng()<.31){q.fillStyle='#766b59';q.fillRect(x-2,y+rnd(7,30),88,rnd(8,14))}
+if(rng()<.12){q.strokeStyle='#bec5b780';q.lineWidth=3;q.beginPath();q.moveTo(x+8,y+9);q.lineTo(x+60,y+54);q.lineTo(x+75,y+7);q.stroke()}
+}
+for(let i=0;i<340;i++){q.fillStyle=pick(['#28482b4d','#315c3966','#4b714b66','#68513d44']);q.beginPath();q.ellipse(rnd(0,512),rnd(0,768),rnd(2,16),rnd(2,14),rnd(0,6.28),0,6.28);q.fill()}
+for(let i=0;i<46;i++){let x=rnd(0,512),y=rnd(0,768);q.strokeStyle='#14292166';q.lineWidth=rnd(1,4);q.beginPath();q.moveTo(x,y);q.lineTo(x+rnd(-15,15),y+rnd(30,190));q.stroke()}
+const t=new THREE.CanvasTexture(cv);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=4;return new THREE.MeshStandardMaterial({map:t,roughness:.97,side:THREE.DoubleSide});
+});
 const windowDark=type('#18292b',.32,.2),windowLit=new THREE.MeshBasicMaterial({color:'#c8b891'}),frameMat=type('#353b35');
 function building(x,z,depth=12,height=16,width=12){const g=new THREE.Group();g.position.set(x,0,z);scene.add(g);const w=width,d=depth,h=height,wall=pick(wallMats),side=Math.sign(x);
- box(w,h,d,wall,0,h/2-.8,0,g);box(w+.6,.35,d+.5,concrete,0,h-.8,0,g);
- const frontX=side===1?-w/2-.035:w/2+.035;
- for(let y=3;y<h-2;y+=3.45){for(let zz=-d/2+1.6;zz<d/2-1;zz+=2.6){
-  const lit=rng()<.09;const win=box(.10,1.58,1.55,lit?windowLit:windowDark,frontX+(side===1?-.07:.07),y,zz,g);
-  box(.19,1.8,.10,frameMat,frontX+(side===1?-.1:.1),y,zz-.78,g);
-  box(.19,1.8,.10,frameMat,frontX+(side===1?-.1:.1),y,zz+.78,g);
-  box(.21,.10,1.68,frameMat,frontX+(side===1?-.1:.1),y+.82,zz,g);
-  box(.21,.10,1.68,frameMat,frontX+(side===1?-.1:.1),y-.82,zz,g);
-  if(rng()<.22)box(.17,1.78,1.7,wood,frontX+(side===1?-.15:.15),y,zz,g);
- }}
- const door=box(.15,2.9,2.2,dark,frontX+(side===1?-.13:.13),1.25,0,g);
- box(.3,.16,2.8,rust,frontX+(side===1?-.15:.15),2.8,0,g);
- for(let i=0;i<24;i++){const az=rnd(-d/2,d/2);const len=rnd(.65,4);const v=rod([rnd(-w/2,w/2),h-.7,az],[rnd(-w/2,w/2),h-.7-len,az+rnd(-.5,.5)],rnd(.012,.045),pick(leafMats),g)}
- for(let i=0;i<28;i++){const yy=rnd(1,h-1),zz=rnd(-d/2,d/2);const m=sphere(rnd(.08,.24),pick(leafMats),frontX+(side===1?-.2:.2),yy,zz,g,0);m.scale.set(.4,2.2,1)}
- if(rng()<.25){for(let y=2;y<h-3;y+=3.4){box(1,.1,3.8,steel,frontX+side*.85,y+.12,0,g);rod([frontX+side*1.4,y,1.5],[frontX+side*.25,y+2.8,-1.5],.035,steel,g)}}
- return g}
-for(let i=0;i<37;i++){const z=12-i*9.1;for(const side of [-1,1]){if(rng()<.88)building(side*rnd(14,25),z,rnd(8,15),rnd(10,30),rnd(9,15));if(rng()<.5)tree(side*rnd(7,12),z+rnd(-3,3),rnd(.6,1.3))}}
+box(w,h,d,wall,0,h/2-.8,0,g);box(w+.6,.35,d+.5,concrete,0,h-.8,0,g);
+const frontX=side===1?-w/2-.035:w/2+.035;
+const facade=new THREE.Mesh(new THREE.PlaneGeometry(d,h-1.5),pick(facadeTextures));facade.rotation.y=Math.PI/2;facade.position.set(frontX+(side===1?-.05:.05),h/2-.65,0);g.add(facade);
+for(let i=0;i<(mobile?1:3);i++){const yy=rnd(4,h-2),zz=rnd(-d/2+1.3,d/2-1.3);box(.17,1.8,1.5,rng()<.2?windowLit:windowDark,frontX+(side===1?-.13:.13),yy,zz,g);
+box(.23,.12,1.65,frameMat,frontX+(side===1?-.16:.16),yy+.85,zz,g)}
+box(.2,2.85,2.3,dark,frontX+(side===1?-.18:.18),1.25,0,g);box(.30,.15,2.85,rust,frontX+(side===1?-.2:.2),2.85,0,g);
+for(let i=0;i<(mobile?6:11);i++){const az=rnd(-d/2,d/2),len=rnd(.65,4);
+rod([rnd(-w/2,w/2),h-.7,az],[rnd(-w/2,w/2),h-.7-len,az+rnd(-.5,.5)],rnd(.012,.045),pick(leafMats),g)}
+for(let i=0;i<(mobile?7:13);i++){const yy=rnd(1,h-1),zz=rnd(-d/2,d/2),m=sphere(rnd(.08,.24),pick(leafMats),frontX+(side===1?-.21:.21),yy,zz,g,0);m.scale.set(.4,2.2,1)}
+if(rng()<.27&&!mobile){for(let y=2;y<h-3;y+=4.2){box(1,.1,3.8,steel,frontX+side*.85,y+.12,0,g);rod([frontX+side*1.4,y,1.5],[frontX+side*.25,y+2.8,-1.5],.035,steel,g)}}
+return g}
+for(let i=0;i<(mobile?32:37);i++){const z=12-i*9.1;for(const side of [-1,1]){if(rng()<.88)building(side*rnd(14,25),z,rnd(8,15),rnd(10,30),rnd(9,15));if(rng()<.5)tree(side*rnd(7,12),z+rnd(-3,3),rnd(.6,1.3))}}
 for(let i=0;i<22;i++){const z=-35-i*14;const side=i%2?-1:1;box(rnd(5,9),rnd(17,51),rnd(5,11),pick(wallMats),side*rnd(38,83),rnd(10,26),z)}
 // Distant overpass / bridge
 function bridge(z){for(const x of [-39,-12,12,39]){box(3,13,4,concrete,x,6.5,z);box(4,1.1,6,concrete,x,13,z)}
@@ -161,7 +171,7 @@ function openProject(p){modalOpen=true;lastInput=performance.now();$('previewTit
 function closeProject(){modalOpen=false;$('modal').style.display='none';lastInput=performance.now()}
 function showTurn(r){pending=r;target=position;$('choiceLabel').textContent=r.label;$('choiceTitle').textContent=r.title;$('choiceDesc').textContent=r.desc;$('choice').style.display='block';$('chapter').textContent=r.label;$('heading').textContent='A new road appears.'}
 function hideTurn(){pending=null;$('choice').style.display='none'}
-function enter(r){if(!r)return;hideTurn();activeRoute=r;checkpoint=r.at;mode='branch';branchProgress=0;branchTarget=0;lastInput=performance.now();warning=false;$('chapter').textContent=r.label;$('heading').textContent=r.title+'.';$('hint').innerHTML='Scroll to enter the scene. Click the artwork to inspect it.<br/>Return to the road anytime.';notice('Take the detour. Explore the '+(r.id==='website'?'screen.':'artwork.'))}
+function enter(r){if(!r)return;autoPreviewed=false;hideTurn();activeRoute=r;checkpoint=r.at;mode='branch';branchProgress=0;branchTarget=0;lastInput=performance.now();warning=false;$('chapter').textContent=r.label;$('heading').textContent=r.title+'.';$('hint').innerHTML='Scroll to enter the scene. Click the artwork to inspect it.<br/>Return to the road anytime.';notice('Take the detour. Explore the '+(r.id==='website'?'screen.':'artwork.'))}
 function goMain(){hideTurn();closeProject();if(mode!=='main'){mode='main';position=checkpoint;target=checkpoint;branchProgress=0;branchTarget=0;activeRoute=null;lastInput=performance.now();$('chapter').textContent='THE MAIN PATH';$('heading').textContent='The road continues.';$('hint').innerHTML='Scroll to discover more.<br/>There is always another story ahead.';notice('Back at your saved checkpoint')}}
 function restart(){hideTurn();closeProject();mode='main';position=0;target=0;checkpoint=0;branchProgress=0;branchTarget=0;activeRoute=null;passed.clear();warning=false;lastInput=performance.now();$('heading').textContent='A little further.';$('chapter').textContent='01 / THE BEGINNING';$('hint').innerHTML='Scroll to pedal through a city time forgot.<br/>Drag to look around. Choose the roads less travelled.';notice('A new journey begins')}
 function advance(amount){if(!started||modalOpen)return;lastInput=performance.now();warning=false;if(mode==='main'){target=clamp(target+amount,0,298);if(pending){if(amount>0)passed.add(pending.at);hideTurn()}}else{branchTarget=clamp(branchTarget+amount/65,0,1)}}
